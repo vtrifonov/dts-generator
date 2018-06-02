@@ -49,6 +49,9 @@ export interface Options {
 // declare some constants so we don't have magic integers without explanation
 const DTSLEN = '.d.ts'.length;
 
+// used to find relative paths to replace with their absolute
+const relativePathsRegex = /(?:from\s+|require)['"]((?:\.|\.\.)\/[^'"]*)['"]/g;
+
 const filenameToMid: (filename: string) => string = (function () {
 	if (pathUtil.sep === '/') {
 		return function (filename: string) {
@@ -133,6 +136,22 @@ function processTree(sourceFile: ts.SourceFile, replacer: (node: ts.Node) => str
 	code += sourceFile.text.slice(cursorPosition);
 
 	return code;
+}
+
+function getAbsolutePath(base: string, relative: string): string {
+	var stack = base.split("/"),
+		parts = relative.split("/");
+	stack.pop(); // remove current file name (or empty string)
+	// (omit if "base" is the current folder without trailing slash)
+	for (var i = 0; i < parts.length; i++) {
+		if (parts[i] == ".")
+			continue;
+		if (parts[i] == "..")
+			stack.pop();
+		else
+			stack.push(parts[i]);
+	}
+	return stack.join("/");
 }
 
 /**
@@ -498,7 +517,17 @@ export default function generate(options: Options): Promise<void> {
 				}
 			});
 
-			output.write(content.replace(nonEmptyLineStart, '$&' + indent));
+			let match = null;
+			let resultContent: string = content;
+			while ((match = relativePathsRegex.exec(content)) != null) {
+				let relativePath = match[1];
+				let absolutePath = getAbsolutePath(resolvedModuleId, match[1]);
+				// replace relative paths with absolute
+				resultContent = resultContent.replace(`'${relativePath}'`, `'${absolutePath}'`);
+				resultContent = resultContent.replace(`"${relativePath}"`, `"${absolutePath}"`);
+			}
+
+			output.write(resultContent.replace(nonEmptyLineStart, '$&' + indent));
 			output.write(eol + '}' + eol);
 		}
 		else {
