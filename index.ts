@@ -50,7 +50,7 @@ export interface Options {
 const DTSLEN = '.d.ts'.length;
 
 // used to find relative paths to replace with their absolute
-const relativePathsRegex = /(?:from\s+|import\s+|require)['"]((?:\.|\.\.)\/[^'"]*)['"]/g;
+const relativePathsRegex = /(?:from\s+|import\s+|require\()['"]((?:\.|\.\.)\/[^'"]*)['"]/g;
 
 const filenameToMid: (filename: string) => string = (function () {
 	if (pathUtil.sep === '/') {
