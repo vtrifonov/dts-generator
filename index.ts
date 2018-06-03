@@ -150,7 +150,9 @@ function getAbsolutePath(base: string, relative: string): string {
 			stack.pop();
 		else
 			stack.push(parts[i]);
-	}
+    }
+    // remove empty elements from the array to avoid ending /
+    stack = stack.filter(function(e) { return e });
 	return stack.join("/");
 }
 
