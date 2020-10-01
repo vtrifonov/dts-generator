@@ -227,5 +227,19 @@ registerSuite('index', {
 			const contents = fs.readFileSync('tmp/foo.d.ts', { encoding: 'utf8' });
 			assert.include(contents, `/// <reference path="../some/path/es6-promise.d.ts" />`);
 		});
+	},
+	'project with relative imports in .d.ts files': function () {
+		return generate({
+			baseDir: 'tests/support/foo-relative-path',
+			files: [ 'sub/bar.d.ts', 'sub/baz.d.ts' ],
+			out: 'tmp/foo.d.ts'
+		}).then(function () {
+			const contents = fs.readFileSync('tmp/foo.d.ts', { encoding: 'utf8' });
+			assert.include(contents, `export * from 'sub/folder/bar/bar'`);
+			assert.include(contents, `export * from 'sub/baz/baz'`);
+
+			// all relative paths should be replaced with absolute ones so there should be no exports like this
+			assert.notInclude(contents, `export * from '.`);
+		});
 	}
 });

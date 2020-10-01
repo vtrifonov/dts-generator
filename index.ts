@@ -48,6 +48,9 @@ export interface Options {
 // declare some constants so we don't have magic integers without explanation
 const DTSLEN = '.d.ts'.length;
 
+// used to find relative paths to replace with their absolute
+const relativePathsRegex = /(?:from\s+|import\s+|require\()['"]((?:\.|\.\.)\/[^'"]*)['"]/g;
+
 const filenameToMid: (filename: string) => string = (function () {
 	if (pathUtil.sep === '/') {
 		return function (filename: string) {
@@ -61,6 +64,53 @@ const filenameToMid: (filename: string) => string = (function () {
 		};
 	}
 })();
+
+/**
+ * Get the absolute path from base path and relative one
+ * @param base The base path
+ * @param relative The relative path inside the base path
+ */
+function getAbsolutePath(base: string, relative: string) {
+	let stack: string[] = base.split('/');
+	const parts: string[] = relative.split('/');
+
+	stack.pop();
+	// remove current file name (or empty string)
+	// (omit if "base" is the current folder without trailing slash)
+
+	for (let part of parts) {
+		if (part === '.') {
+			continue;
+		}
+		if (part === '..') {
+			stack.pop();
+		} else {
+			stack.push(part);
+		}
+	}
+	// remove empty elements from the array to avoid ending /
+	stack = stack.filter(function(e) { return e; });
+	return stack.join('/');
+}
+
+/**
+ * Replace all relative paths in a given content with absolute ones
+ * @param basePath The base path
+ * @param content The content to search for relative paths
+ */
+function replaceRelativePaths(basePath: string, content: string): string {
+	let match = null;
+	let resultContent: string = content;
+	while ((match = relativePathsRegex.exec(content)) != null) {
+		let relativePath = match[1];
+		let absolutePath = getAbsolutePath(basePath, relativePath);
+		// replace relative paths with absolute
+		resultContent = resultContent.replace(`'${relativePath}'`, `'${absolutePath}'`);
+		resultContent = resultContent.replace(`"${relativePath}"`, `"${absolutePath}"`);
+	}
+
+	return resultContent;
+}
 
 /**
  * A helper function that takes TypeScript diagnostic errors and returns an error
@@ -469,7 +519,7 @@ export default function generate(options: Options): Promise<void> {
 
 			output.write('declare module \'' + resolvedModuleId + '\' {' + eol + indent);
 
-			const content = processTree(declarationFile, function (node) {
+			let content = processTree(declarationFile, function (node) {
 				if (isNodeKindExternalModuleReference(node)) {
 					// TODO figure out if this branch is possible, and if so, write a test
 					// that covers it.
@@ -496,6 +546,8 @@ export default function generate(options: Options): Promise<void> {
 					}
 				}
 			});
+
+			content = replaceRelativePaths(resolvedModuleId, content);
 
 			output.write(content.replace(nonEmptyLineStart, '$&' + indent));
 			output.write(eol + '}' + eol);
