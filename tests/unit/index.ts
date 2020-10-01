@@ -206,7 +206,7 @@ registerSuite('index', {
 			assert.include(contents, `declare module 'foo/FooImplExportDeclaration'`);
 		});
 	},
-	'add reference types package dependency  ': function () {
+	'add reference types package dependency': function () {
 		return generate({
 			baseDir: 'tests/support/foo',
 			files: [ 'index.ts' ],
@@ -217,7 +217,7 @@ registerSuite('index', {
 			assert.include(contents, `/// <reference types="es6-promise" />`);
 		});
 	},
-	'add external path dependency  ': function () {
+	'add external path dependency': function () {
 		return generate({
 			baseDir: 'tests/support/foo',
 			files: [ 'index.ts' ],
